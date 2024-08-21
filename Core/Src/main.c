@@ -70,6 +70,7 @@ uint32_t canListTxData [8] =
 uint32_t canTxMailbox;
 uint8_t canenviado [18] = "\nSe envio Msg CAN\r";
 uint8_t CanError [27] = "\nNo se pudo enviar mensaje\r";
+// uint8_t canReadData [8] = {"h","o","l","a",0xff, 0xfa, 0x98, 0xff};
 
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
