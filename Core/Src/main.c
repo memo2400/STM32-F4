@@ -43,6 +43,9 @@
 /* Private variables ---------------------------------------------------------*/
 CAN_HandleTypeDef hcan2;
 
+TIM_HandleTypeDef htim13;
+TIM_HandleTypeDef htim14;
+
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
@@ -70,7 +73,7 @@ uint32_t canListTxData [8] =
 uint32_t canTxMailbox;
 uint8_t canenviado [18] = "\nSe envio Msg CAN\r";
 uint8_t CanError [27] = "\nNo se pudo enviar mensaje\r";
-// uint8_t canReadData [8] = {"h","o","l","a",0xff, 0xfa, 0x98, 0xff};
+//char serial_test [60] = {"h","o","l","a"} //,0xff, 0xfa, 0x98, 0xff};
 
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
@@ -98,6 +101,8 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_CAN2_Init(void);
+static void MX_TIM13_Init(void);
+static void MX_TIM14_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -137,10 +142,23 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_CAN2_Init();
+  MX_TIM13_Init();
+  MX_TIM14_Init();
   /* USER CODE BEGIN 2 */
   HAL_CAN_Start(&hcan2);  // segun yo 	 agregue
   HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO0_MSG_PENDING); // esta IT llama al callback
   HAL_UART_Receive_IT(&huart1, UsartRxData, sizeof(UsartRxData));
+
+  //timmer
+  HAL_TIM_Base_Start_IT(&htim13);
+  HAL_TIM_Base_Start_IT(&htim14); // iniciamos el timer
+
+  // Tiempo de debounce en milisegundos
+  #define DEBOUNCE_TIME 50
+
+  volatile uint8_t buttonPressed = 0;
+  uint32_t lastInterruptTime = 0;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -156,6 +174,10 @@ int main(void)
   canRxData [6] = 0xff;
   canRxData [7] = 0xff;
   */
+
+	HAL_GPIO_WritePin(LED_A4_GPIO_Port, LED_A4_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(LED_A5_GPIO_Port, LED_A5_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(LED_A6_GPIO_Port, LED_A6_Pin, GPIO_PIN_SET);
 
   while (1)
   {
@@ -174,33 +196,40 @@ int main(void)
 
 	  //HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
 	  HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin);
-	  HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
+	  //HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
+	  //Boton
+	  if (HAL_GPIO_ReadPin(Boton_S2_GPIO_Port, Boton_S2_Pin))
+	  {
+		  HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
+		  //HAL_GPIO_TogglePin(LED_A5_GPIO_Port, LED_A5_Pin);
+	  }
+
 
 	  //USART
 	  //HAL_UART_Transmit(&huart1, (char*)contartoggle, sizeof(contartoggle), 300);
-	  HAL_UART_Transmit(&huart1, serial, sizeof(serial), 300);
+	  //HAL_UART_Transmit(&huart1, serial, sizeof(serial), 300);
+	  HAL_UART_Transmit(&huart1, (uint8_t*)0x98, 16, HAL_MAX_DELAY);
 
 	  // convierto variable entero en texto // (char que recibe, "texto", Variable que convertimos en %d)
-
 	  //sprintf(BufferEnvio, "\n Contar: %d\r", contartoggle);
 	  //HAL_UART_Transmit (&huart1, (uint8_t*)BufferEnvio, strlen(BufferEnvio), HAL_MAX_DELAY); // sizeof(BufferLectura) = es si funcion no tambien
 
 	  // envio de un byte
-
 	  //sprintf(BufferEnvio, "\n El Byte 0 es: %X %X\r", canRxData[0],canRxData[1]); //%d convierte hex a Dec
 	  //HAL_UART_Transmit (&huart1, (uint8_t*)BufferEnvio, strlen(BufferEnvio), HAL_MAX_DELAY); // sizeof(BufferLectura) = es si funcion no tambien
+
 
 	  //Enviar CAN Si funciono.
 
 	  HAL_CAN_AddTxMessage(&hcan2, &canTxHeader, canTxData, &canTxMailbox);
 
-	  // Revisar si el conteo mensaje se envio
 
+	  // Revisar si el conteo mensaje se envio
 	  uint8_t ContarIntentoCan = 0;
 	  while (HAL_CAN_IsTxMessagePending(&hcan2, canTxMailbox)) // si ya no hay mensajes pendientes se ejecuta el while
 	  	  {
 	  	  	  HAL_UART_Transmit (&huart1, canenviado, sizeof(canenviado), 300);
-	  		  HAL_Delay(300);
+	  		  //HAL_Delay(300);
 
 	  		  if (ContarIntentoCan == 3)
 	  		  {
@@ -226,7 +255,7 @@ int main(void)
 
 
 	  sprintf(BufferEnvio, " El PGN Enviado: %lX ", canTxHeader.ExtId); //%d convierte hex a Dec
-	  HAL_UART_Transmit (&huart1, (uint8_t*)BufferEnvio, strlen(BufferEnvio), HAL_MAX_DELAY);
+	  //HAL_UART_Transmit (&huart1, (uint8_t*)BufferEnvio, strlen(BufferEnvio), HAL_MAX_DELAY);
 
 	  sprintf(BufferEnvio, " PGN Recibido: Datos: %lX %X %X %X %X %X %X %X %X\r",
 			  CanRxHeader.ExtId,
@@ -239,7 +268,7 @@ int main(void)
 			  canRxData[6],
 			  canRxData[7]);
 
-	  	  	  canRxData[0] = 0;
+	  	  	  	  canRxData[0] = 0;
 	  			  canRxData[1] = 0;
 	  			  canRxData[2] = 0;
 	  			  canRxData[3] = 0;
@@ -248,14 +277,9 @@ int main(void)
 	  			  canRxData[6] = 0;
 	  			  canRxData[7] = 0;
 
-	  HAL_UART_Transmit (&huart1, (uint8_t*)BufferEnvio, strlen(BufferEnvio), HAL_MAX_DELAY);
+	  //HAL_UART_Transmit (&huart1, (uint8_t*)BufferEnvio, strlen(BufferEnvio), HAL_MAX_DELAY);
 
 
-	  //Boton
-	  if (HAL_GPIO_ReadPin(Boton_S1_GPIO_Port, Boton_S1_Pin))
-	  {
-		  //HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
-	  }
 
 	  HAL_Delay(500);
 	  contartoggle ++;
@@ -381,6 +405,68 @@ static void MX_CAN2_Init(void)
 }
 
 /**
+  * @brief TIM13 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM13_Init(void)
+{
+
+  /* USER CODE BEGIN TIM13_Init 0 */
+
+  /* USER CODE END TIM13_Init 0 */
+
+  /* USER CODE BEGIN TIM13_Init 1 */
+
+  /* USER CODE END TIM13_Init 1 */
+  htim13.Instance = TIM13;
+  htim13.Init.Prescaler = 8000-1;
+  htim13.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim13.Init.Period = 10000;
+  htim13.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim13.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim13) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM13_Init 2 */
+
+  /* USER CODE END TIM13_Init 2 */
+
+}
+
+/**
+  * @brief TIM14 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM14_Init(void)
+{
+
+  /* USER CODE BEGIN TIM14_Init 0 */
+
+  /* USER CODE END TIM14_Init 0 */
+
+  /* USER CODE BEGIN TIM14_Init 1 */
+
+  /* USER CODE END TIM14_Init 1 */
+  htim14.Instance = TIM14;
+  htim14.Init.Prescaler = 8000-1;
+  htim14.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim14.Init.Period = 5000;
+  htim14.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim14.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim14) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM14_Init 2 */
+
+  /* USER CODE END TIM14_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -425,15 +511,31 @@ static void MX_GPIO_Init(void)
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, LED_A4_Pin|LED_A5_Pin|LED_A6_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOE, LED1_Pin|LED2_Pin|LED3_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : Boton_S1_Pin Boton_S2_Pin Boton_S3_Pin */
-  GPIO_InitStruct.Pin = Boton_S1_Pin|Boton_S2_Pin|Boton_S3_Pin;
+  /*Configure GPIO pins : LED_A4_Pin LED_A5_Pin LED_A6_Pin */
+  GPIO_InitStruct.Pin = LED_A4_Pin|LED_A5_Pin|LED_A6_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : Boton_S1_IT_Pin */
+  GPIO_InitStruct.Pin = Boton_S1_IT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(Boton_S1_IT_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : Boton_S2_Pin Boton_S3_Pin */
+  GPIO_InitStruct.Pin = Boton_S2_Pin|Boton_S3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
@@ -444,6 +546,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
@@ -458,10 +564,54 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	//HAL_UART_Receive_IT(&huart1, InterrupcionUsart, sizeof(InterrupcionUsart));
 	HAL_UART_Receive_IT(&huart1, UsartRxData, sizeof(UsartRxData));
 	//UsartRxData
-  /* NOTE: This function should not be modified, when the callback is needed,
-           the HAL_UART_RxCpltCallback could be implemented in the user file
-   */
+
 }
+
+int contador_IT = 0;
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+
+
+
+    if (GPIO_Pin == Boton_S1_IT_Pin)  // Asegurar que es el pin correcto
+    {
+    	//HAL_GPIO_TogglePin(LED_A5_GPIO_Port, LED_A5_Pin);  // Ejemplo: Cambiar el estado de un LED
+    	if (contador_IT == 1)
+    	{
+    		HAL_GPIO_WritePin(LED_A5_GPIO_Port, LED_A5_Pin, GPIO_PIN_RESET);
+    	}
+    	if (contador_IT == 2)
+    	{
+    		HAL_GPIO_WritePin(LED_A4_GPIO_Port, LED_A4_Pin, GPIO_PIN_RESET);
+    	}
+    	if (contador_IT == 3)
+    	{
+    		HAL_GPIO_WritePin(LED_A6_GPIO_Port, LED_A6_Pin, GPIO_PIN_RESET);
+    	}
+    	if (contador_IT >= 4)
+    	{
+    		HAL_GPIO_WritePin(LED_A4_GPIO_Port, LED_A4_Pin, GPIO_PIN_SET);
+    		HAL_GPIO_WritePin(LED_A5_GPIO_Port, LED_A5_Pin, GPIO_PIN_SET);
+    		HAL_GPIO_WritePin(LED_A6_GPIO_Port, LED_A6_Pin, GPIO_PIN_SET);
+    		contador_IT = 0;
+    	}
+    	contador_IT++;
+    }
+}
+
+
+/*
+ * Interrupcion del timmer
+ */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if (htim->Instance == TIM14) // aqui le indicamos que usamos el timmer 1 para no revolver timers
+	{
+		//HAL_GPIO_TogglePin(LedRojo_GPIO_Port, LedRojo_Pin);
+		HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
+	}
+}
+
 
 /* USER CODE END 4 */
 
