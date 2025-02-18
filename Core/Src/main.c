@@ -153,16 +153,14 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim13);
   HAL_TIM_Base_Start_IT(&htim14); // iniciamos el timer
 
-  // Tiempo de debounce en milisegundos
-  #define DEBOUNCE_TIME 50
 
-  volatile uint8_t buttonPressed = 0;
-  uint32_t lastInterruptTime = 0;
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+
   /*
   canRxData [0] = 0x10;
   canRxData [1] = 0xb8;
@@ -178,6 +176,20 @@ int main(void)
 	HAL_GPIO_WritePin(LED_A4_GPIO_Port, LED_A4_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(LED_A5_GPIO_Port, LED_A5_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(LED_A6_GPIO_Port, LED_A6_Pin, GPIO_PIN_SET);
+
+	uint8_t contador_display = 0;
+	uint8_t display[10] = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F};
+
+	void DisplayPort(uint8_t patron){
+
+		    HAL_GPIO_WritePin(GPIOD, A_Pin, (((patron & 0x01) >> 0) & 0x01));
+		    HAL_GPIO_WritePin(GPIOD, B_Pin, (((patron & 0x02) >> 1) & 0x01));
+		    HAL_GPIO_WritePin(GPIOD, C_Pin, (((patron & 0x04) >> 2) & 0x01));
+		    HAL_GPIO_WritePin(GPIOD, D_Pin, (((patron & 0x08) >> 3) & 0x01));
+		    HAL_GPIO_WritePin(GPIOD, E_Pin, (((patron & 0x10) >> 4) & 0x01));
+		    HAL_GPIO_WritePin(GPIOD, F_Pin, (((patron & 0x20) >> 5) & 0x01));
+		    HAL_GPIO_WritePin(GPIOD, G_Pin, (((patron & 0x40) >> 6) & 0x01));
+	}
 
   while (1)
   {
@@ -197,11 +209,21 @@ int main(void)
 	  //HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
 	  HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin);
 	  //HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
-	  //Boton
+
+	  // Diplay
+	  DisplayPort(display[contador_display]);
+	  contador_display ++;
+	  if (contador_display > 9){
+		  contador_display = 0;
+	  }
+
+	  //Boton S2
 	  if (HAL_GPIO_ReadPin(Boton_S2_GPIO_Port, Boton_S2_Pin))
 	  {
 		  HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
 		  //HAL_GPIO_TogglePin(LED_A5_GPIO_Port, LED_A5_Pin);
+		  //HAL_GPIO_WritePin(A_GPIO_Port, A_Pin, RESET);
+		  //HAL_GPIO_WritePin(B_GPIO_Port, B_Pin, SET);
 	  }
 
 
@@ -513,6 +535,7 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOE_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
@@ -520,6 +543,13 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOE, LED1_Pin|LED2_Pin|LED3_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, A_Pin|B_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, C_Pin|D_Pin|E_Pin|F_Pin
+                          |G_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : LED_A4_Pin LED_A5_Pin LED_A6_Pin */
   GPIO_InitStruct.Pin = LED_A4_Pin|LED_A5_Pin|LED_A6_Pin;
@@ -547,6 +577,22 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : A_Pin B_Pin */
+  GPIO_InitStruct.Pin = A_Pin|B_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : C_Pin D_Pin E_Pin F_Pin
+                           G_Pin */
+  GPIO_InitStruct.Pin = C_Pin|D_Pin|E_Pin|F_Pin
+                          |G_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
@@ -567,48 +613,106 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 }
 
+// Tiempo de debounce en milisegundos
+#define DEBOUNCE_TIME 50
+
+volatile uint8_t FlagBotonPresionado = 0;
+uint32_t lastInterruptTime = 0;
 int contador_IT = 0;
+
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
+	uint32_t currentTime = HAL_GetTick();
+
+	//GPIOA->ODR=0B000000;
+
+	// Verifica si tiempo transcurrido es mayor que tiempo de debounce
+	if ((currentTime - lastInterruptTime) > DEBOUNCE_TIME) {
 
 
-
-    if (GPIO_Pin == Boton_S1_IT_Pin)  // Asegurar que es el pin correcto
-    {
-    	//HAL_GPIO_TogglePin(LED_A5_GPIO_Port, LED_A5_Pin);  // Ejemplo: Cambiar el estado de un LED
-    	if (contador_IT == 1)
-    	{
-    		HAL_GPIO_WritePin(LED_A5_GPIO_Port, LED_A5_Pin, GPIO_PIN_RESET);
-    	}
-    	if (contador_IT == 2)
-    	{
-    		HAL_GPIO_WritePin(LED_A4_GPIO_Port, LED_A4_Pin, GPIO_PIN_RESET);
-    	}
-    	if (contador_IT == 3)
-    	{
-    		HAL_GPIO_WritePin(LED_A6_GPIO_Port, LED_A6_Pin, GPIO_PIN_RESET);
-    	}
-    	if (contador_IT >= 4)
-    	{
-    		HAL_GPIO_WritePin(LED_A4_GPIO_Port, LED_A4_Pin, GPIO_PIN_SET);
-    		HAL_GPIO_WritePin(LED_A5_GPIO_Port, LED_A5_Pin, GPIO_PIN_SET);
-    		HAL_GPIO_WritePin(LED_A6_GPIO_Port, LED_A6_Pin, GPIO_PIN_SET);
-    		contador_IT = 0;
-    	}
-    	contador_IT++;
-    }
+		if (GPIO_Pin == Boton_S1_IT_Pin)  // Asegurar que es el pin correcto
+		{
+			FlagBotonPresionado = 1;
+			//HAL_GPIO_TogglePin(LED_A5_GPIO_Port, LED_A5_Pin);  // Ejemplo: Cambiar el estado de un LED
+			if (contador_IT == 1)
+			{
+				HAL_GPIO_WritePin(LED_A4_GPIO_Port, LED_A4_Pin, GPIO_PIN_RESET);
+			}
+			if (contador_IT == 2)
+			{
+				HAL_GPIO_WritePin(LED_A5_GPIO_Port, LED_A5_Pin, GPIO_PIN_RESET);
+			}
+			if (contador_IT == 3)
+			{
+				HAL_GPIO_WritePin(LED_A5_GPIO_Port, LED_A5_Pin, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(LED_A6_GPIO_Port, LED_A6_Pin, GPIO_PIN_RESET);
+			}
+			if (contador_IT == 4)
+			{
+				HAL_GPIO_WritePin(LED_A4_GPIO_Port, LED_A4_Pin, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(LED_A5_GPIO_Port, LED_A5_Pin, GPIO_PIN_RESET);
+			}
+			if (contador_IT == 5)
+			{
+				HAL_GPIO_WritePin(LED_A6_GPIO_Port, LED_A6_Pin, GPIO_PIN_SET);
+			}
+			if (contador_IT == 6)
+			{
+				HAL_GPIO_WritePin(LED_A5_GPIO_Port, LED_A5_Pin, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(LED_A6_GPIO_Port, LED_A6_Pin, GPIO_PIN_RESET);
+			}
+			if (contador_IT >= 7)
+			{
+				HAL_GPIO_WritePin(LED_A4_GPIO_Port, LED_A4_Pin, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(LED_A5_GPIO_Port, LED_A5_Pin, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(LED_A6_GPIO_Port, LED_A6_Pin, GPIO_PIN_SET);
+				contador_IT = 0;
+			}
+			contador_IT++;
+		}
+	}
+	lastInterruptTime = currentTime;
 }
 
 
 /*
  * Interrupcion del timmer
  */
+int banderatim = 0;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if (htim->Instance == TIM14) // aqui le indicamos que usamos el timmer 1 para no revolver timers
 	{
 		//HAL_GPIO_TogglePin(LedRojo_GPIO_Port, LedRojo_Pin);
 		HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
+
+		/*HAL_GPIO_TogglePin(A_GPIO_Port, A_Pin);
+		HAL_GPIO_TogglePin(B_GPIO_Port, B_Pin);*/
+		if (banderatim == 0){
+			//GPIOD->ODR=0B0000000100000001;
+			/*HAL_GPIO_WritePin(A_GPIO_Port, A_Pin, SET);
+			HAL_GPIO_WritePin(B_GPIO_Port, B_Pin, SET);
+
+			banderatim = 1;*/
+		}
+		if (banderatim == 1){
+			//GPIOD->ODR=0B1111111011111110;
+/*
+			HAL_GPIO_WritePin(A_GPIO_Port, A_Pin, SET);
+			HAL_GPIO_WritePin(B_GPIO_Port, B_Pin, SET);
+			banderatim = 0;*/
+		}
+
+
+		/*
+			HAL_GPIO_WritePin(DISPLAY_PORT, SEGMENT_A, (patron & 0x01) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+		    HAL_GPIO_WritePin(DISPLAY_PORT, SEGMENT_B, (patron & 0x02) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+		    HAL_GPIO_WritePin(DISPLAY_PORT, SEGMENT_C, (patron & 0x04) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+		    HAL_GPIO_WritePin(DISPLAY_PORT, SEGMENT_D, (patron & 0x08) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+		    HAL_GPIO_WritePin(DISPLAY_PORT, SEGMENT_E, (patron & 0x10) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+		    HAL_GPIO_WritePin(DISPLAY_PORT, SEGMENT_F, (patron & 0x20) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+		    HAL_GPIO_WritePin(DISPLAY_PORT, SEGMENT_G, (patron & 0x40) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+		    */
 	}
 }
 
