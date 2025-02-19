@@ -210,8 +210,8 @@ int main(void)
 	  HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin);
 	  //HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
 
-	  // Diplay
-	  DisplayPort(display[contador_display]);
+	  // Diplay - Funcional
+	  // DisplayPort(display[contador_display]);
 	  contador_display ++;
 	  if (contador_display > 9){
 		  contador_display = 0;
@@ -678,7 +678,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 /*
  * Interrupcion del timmer
  */
-int banderatim = 0;
+float banderatim = 0;
+uint8_t contador_display_tim = 9;
+uint8_t display[10] = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F};
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if (htim->Instance == TIM14) // aqui le indicamos que usamos el timmer 1 para no revolver timers
@@ -688,6 +691,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 		/*HAL_GPIO_TogglePin(A_GPIO_Port, A_Pin);
 		HAL_GPIO_TogglePin(B_GPIO_Port, B_Pin);*/
+
+		DisplayPort(display[contador_display_tim]);
+
+		if (contador_display_tim == 0){
+			  contador_display_tim = 10;
+		}
+		contador_display_tim --;
+
 		if (banderatim == 0){
 			//GPIOD->ODR=0B0000000100000001;
 			/*HAL_GPIO_WritePin(A_GPIO_Port, A_Pin, SET);
@@ -714,6 +725,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		    HAL_GPIO_WritePin(DISPLAY_PORT, SEGMENT_G, (patron & 0x40) ? GPIO_PIN_SET : GPIO_PIN_RESET);
 		    */
 	}
+}
+
+void DisplayPort(uint8_t patron){
+
+	    HAL_GPIO_WritePin(GPIOD, A_Pin, (((patron & 0x01) >> 0) & 0x01));
+	    HAL_GPIO_WritePin(GPIOD, B_Pin, (((patron & 0x02) >> 1) & 0x01));
+	    HAL_GPIO_WritePin(GPIOD, C_Pin, (((patron & 0x04) >> 2) & 0x01));
+	    HAL_GPIO_WritePin(GPIOD, D_Pin, (((patron & 0x08) >> 3) & 0x01));
+	    HAL_GPIO_WritePin(GPIOD, E_Pin, (((patron & 0x10) >> 4) & 0x01));
+	    HAL_GPIO_WritePin(GPIOD, F_Pin, (((patron & 0x20) >> 5) & 0x01));
+	    HAL_GPIO_WritePin(GPIOD, G_Pin, (((patron & 0x40) >> 6) & 0x01));
 }
 
 
