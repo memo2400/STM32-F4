@@ -43,6 +43,7 @@
 /* Private variables ---------------------------------------------------------*/
 CAN_HandleTypeDef hcan2;
 
+TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim13;
 TIM_HandleTypeDef htim14;
 
@@ -103,6 +104,7 @@ static void MX_USART1_UART_Init(void);
 static void MX_CAN2_Init(void);
 static void MX_TIM13_Init(void);
 static void MX_TIM14_Init(void);
+static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -144,6 +146,7 @@ int main(void)
   MX_CAN2_Init();
   MX_TIM13_Init();
   MX_TIM14_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
   HAL_CAN_Start(&hcan2);  // segun yo 	 agregue
   HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO0_MSG_PENDING); // esta IT llama al callback
@@ -191,8 +194,42 @@ int main(void)
 		    HAL_GPIO_WritePin(GPIOD, G_Pin, (((patron & 0x40) >> 6) & 0x01));
 	}
 
+	// PWM
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);  // Inicia el PWM // Inicia el canal principal
+	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); // Inicia el canal complementario
+	uint32_t dutyCycle = 100;
+
   while (1)
   {
+	  // PWM
+
+	  //funcional
+	  /*__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, dutyCycle);
+	      // Puedes cambiar el valor de dutyCycle para ajustar el brillo del LED
+	  HAL_Delay(500); // Pequeño retardo para evitar cambios bruscos
+	  dutyCycle = 800;*/
+
+
+	  	  for (int i = 0; i <= 1000; i += 10)
+	      {
+	        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, i);  // Ajusta el brillo
+	        HAL_Delay(10);  // Pequeño retardo para ver el efecto
+	      }
+
+	      for (int i = 1000; i >= 0; i -= 10)
+	      {
+	        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, i);  // Ajusta el brillo
+	        HAL_Delay(10);  // Pequeño retardo para ver el efecto
+	      }
+
+
+	  // Diplay - Funcional ASC
+	  // DisplayPort(display[contador_display]);
+	  contador_display ++;
+	  if (contador_display > 9){
+		  contador_display = 0;
+	  }
+
 	  // trama de datos
 
 	  canTxData [0] = 0x26;
@@ -209,13 +246,8 @@ int main(void)
 	  //HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
 	  HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin);
 	  //HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin);
-
-	  // Diplay - Funcional
-	  // DisplayPort(display[contador_display]);
-	  contador_display ++;
-	  if (contador_display > 9){
-		  contador_display = 0;
-	  }
+	  HAL_GPIO_TogglePin(LED_E7_GPIO_Port, LED_E7_Pin);
+	  //HAL_GPIO_TogglePin(GPIOE, LED_E8_Pin);
 
 	  //Boton S2
 	  if (HAL_GPIO_ReadPin(Boton_S2_GPIO_Port, Boton_S2_Pin))
@@ -427,6 +459,81 @@ static void MX_CAN2_Init(void)
 }
 
 /**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM1_Init(void)
+{
+
+  /* USER CODE BEGIN TIM1_Init 0 */
+
+  /* USER CODE END TIM1_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
+
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 80-1;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 1000-1;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
+
+  /* USER CODE END TIM1_Init 2 */
+  HAL_TIM_MspPostInit(&htim1);
+
+}
+
+/**
   * @brief TIM13 Initialization Function
   * @param None
   * @retval None
@@ -542,7 +649,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, LED_A4_Pin|LED_A5_Pin|LED_A6_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, LED1_Pin|LED2_Pin|LED3_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, LED_E7_Pin|LED1_Pin|LED2_Pin|LED3_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, A_Pin|B_Pin, GPIO_PIN_RESET);
@@ -558,6 +665,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : LED_E7_Pin LED1_Pin LED2_Pin LED3_Pin */
+  GPIO_InitStruct.Pin = LED_E7_Pin|LED1_Pin|LED2_Pin|LED3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
   /*Configure GPIO pin : Boton_S1_IT_Pin */
   GPIO_InitStruct.Pin = Boton_S1_IT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
@@ -568,13 +682,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = Boton_S2_Pin|Boton_S3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : LED1_Pin LED2_Pin LED3_Pin */
-  GPIO_InitStruct.Pin = LED1_Pin|LED2_Pin|LED3_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : A_Pin B_Pin */
