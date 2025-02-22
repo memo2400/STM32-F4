@@ -63,8 +63,8 @@ all: main-build
 main-build: F407_Can_v1.0.elf secondary-outputs
 
 # Tool invocations
-F407_Can_v1.0.elf F407_Can_v1.0.map: $(OBJS) $(USER_OBJS) C:\Users\Laptop\Pictures\Proyectos\ STMA\F407_Can_v1.0\STM32F407VETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "F407_Can_v1.0.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\Laptop\Pictures\Proyectos STMA\F407_Can_v1.0\STM32F407VETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="F407_Can_v1.0.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+F407_Can_v1.0.elf F407_Can_v1.0.map: $(OBJS) $(USER_OBJS) C:\Users\Tecnomotum\3D\ Objects\F04\STM32-F4\STM32F407VETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "F407_Can_v1.0.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\Tecnomotum\3D Objects\F04\STM32-F4\STM32F407VETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="F407_Can_v1.0.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

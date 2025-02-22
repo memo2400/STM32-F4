@@ -65,8 +65,8 @@ void Error_Handler(void);
 #define LED_A5_GPIO_Port GPIOA
 #define LED_A6_Pin GPIO_PIN_6
 #define LED_A6_GPIO_Port GPIOA
-#define LED_E7_Pin GPIO_PIN_7
-#define LED_E7_GPIO_Port GPIOE
+#define TIM1_CH1N_E8_Pin GPIO_PIN_8
+#define TIM1_CH1N_E8_GPIO_Port GPIOE
 #define Boton_S1_IT_Pin GPIO_PIN_10
 #define Boton_S1_IT_GPIO_Port GPIOE
 #define Boton_S1_IT_EXTI_IRQn EXTI15_10_IRQn
@@ -94,6 +94,12 @@ void Error_Handler(void);
 #define F_GPIO_Port GPIOD
 #define G_Pin GPIO_PIN_14
 #define G_GPIO_Port GPIOD
+#define TIM4_CH4_D15_Pin GPIO_PIN_15
+#define TIM4_CH4_D15_GPIO_Port GPIOD
+#define TIM3_CH1_C6_Pin GPIO_PIN_6
+#define TIM3_CH1_C6_GPIO_Port GPIOC
+#define TIM3_CH2_C7_Pin GPIO_PIN_7
+#define TIM3_CH2_C7_GPIO_Port GPIOC
 
 /* USER CODE BEGIN Private defines */
 
